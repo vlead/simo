@@ -13,6 +13,7 @@ from bb_settings import *
 PATH = "/labs/"
 BB_URL = "https://bitbucket.org/virtuallabs/"
 BB_PUSH_URL = "ssh://git@altssh.bitbucket.org:443/virtuallabs/"
+BB_PUSH_URL2 = "git+ssh://git@altssh.bitbucket.org:443/virtuallabs/"
 GIT_LOCATE = r"find %s -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "git")
 BZR_LOCATE = r"find %s -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "trunk")
 SVN_LOCATE = r"find %s -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "svn")
@@ -85,7 +86,7 @@ def create_repo(repo_name):
     print repo_name, response.status_code
 
 def bzr_push(repo_path, repo_name):
-    repo_url = '%s%s' % (BB_PUSH_URL,repo_name)
+    repo_url = '%s%s' % (BB_PUSH_URL2, repo_name)
     git_command = "bzr dpush -d %s %s,branch=master " % \
                                             (repo_path, repo_url)
     try:
@@ -118,8 +119,8 @@ def upload_bzr_repos():
             create_repo(bb_repo_name)
             print "Pushing to repo", bb_repo_name
             bzr_push(repo_path, bb_repo_name)
-        break
 
 
 if __name__ == '__main__':
-    upload_git_repos()
+    #upload_git_repos()
+    upload_bzr_repos()

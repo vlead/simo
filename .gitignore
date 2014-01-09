@@ -34,3 +34,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Settings file
+bb_settings.py
+
+# OS X system files
+DS_Store

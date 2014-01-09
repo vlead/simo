@@ -84,8 +84,14 @@ def create_repo(repo_name):
     response = requests.post(url=url, data=payload, auth=auth)
     print repo_name, response.status_code
 
-def bzr_push():
-    pass
+def bzr_push(repo_path, repo_name):
+    repo_url = '%s%s' % (BB_PUSH_URL,repo_name)
+    git_command = "bzr dpush -d %s %s,branch=master " % \
+                                            (repo_path, repo_url)
+    try:
+        subprocess.check_call(git_command, shell=True)
+    except Exception, e:
+        raise e    
 
 def upload_git_repo():
     pass
@@ -94,24 +100,25 @@ def upload_bzr_repos():
     all_bzr_locations = subprocess.check_output(BZR_LOCATE, shell=True)
     for location in all_bzr_locations.split('\n'):
         print location
-        # get all the git repo names 
+        # get all the bazaar repo names 
         m = re.match(r'/labs/(\w+\d*)/bzr/([\w\d\-_]+)/', location)
         if m == None:
             continue
         lab_name = m.group(1)
-        for repo_name in os.listdir(location):
-            # form the bitbucket repo url
-            bb_repo_name = (lab_name + "-" + repo_name).lower()
-            repo_path = location + "/" + repo_name
-            bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
-            if repo_exists(bb_repo_url):
-                print "Pushing to repo", bb_repo_name
-                git_push(repo_path, bb_repo_name)
-            else:
-                print "Creating repo", bb_repo_name
-                create_repo(bb_repo_name)
-                print "Pushing to repo", bb_repo_name
-                git_push(repo_path, bb_repo_name)
+        repo_name = m.group(2)
+        # form the bitbucket repo url
+        bb_repo_name = (lab_name + "-" + repo_name).lower()
+        repo_path = location #+ "/" + repo_name
+        bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
+        if repo_exists(bb_repo_url):
+            print "Pushing to repo", bb_repo_name
+            bzr_push(repo_path, bb_repo_name)
+        else:
+            print "Creating repo", bb_repo_name
+            create_repo(bb_repo_name)
+            print "Pushing to repo", bb_repo_name
+            bzr_push(repo_path, bb_repo_name)
+        break
 
 
 if __name__ == '__main__':

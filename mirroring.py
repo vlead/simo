@@ -92,7 +92,8 @@ def bzr_push(repo_path, repo_name):
     try:
         subprocess.check_call(git_command, shell=True)
     except Exception, e:
-        raise e    
+        print 'push failed for', repo_name 
+        print '%s%s' % (e.errno, e.strerror)   
 
 def upload_git_repo():
     pass
@@ -121,6 +122,42 @@ def upload_bzr_repos():
             bzr_push(repo_path, bb_repo_name)
 
 
+def upload_svn_repos():
+    all_svn_locations = subprocess.check_output(SVN_LOCATE, shell=True)
+    for location in all_svn_locations.split('\n'):
+        print location #/labs/eerc05/svn
+        m = re.match("/labs/(%s)/svn" % LAB_ID_REGEX, location)
+        if m == None:
+            continue
+        lab_name = m.group(1)
+        for repo_name in os.listdir(location):
+            # form the bitbucket repo url
+            bb_repo_name = (lab_name + "-" + repo_name).lower()
+            repo_path = location + "/" + repo_name
+            bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
+            if repo_exists(bb_repo_url):
+                print "Pushing to repo", bb_repo_name
+                sync_svn_git(repo_path, bb_repo_name)
+                svn_push(repo_path, bb_repo_name)
+            else:
+                print "Creating repo", bb_repo_name
+                create_repo(bb_repo_name)
+                create_svn_git(repo_path, bb_repo_name)
+                print "Pushing to repo", bb_repo_name
+                svn_push(repo_path, bb_repo_name)
+        break
+
+def sync_svn_git(repo_path, repo_name):
+    print repo_path, repo_name
+
+
+def svn_push(repo_path, repo_name):
+    pass
+
+def create_svn_git(repo_path, repo_name):
+    pass    
+
 if __name__ == '__main__':
     #upload_git_repos()
-    upload_bzr_repos()
+    #upload_bzr_repos()
+    upload_svn_repos()

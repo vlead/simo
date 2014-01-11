@@ -96,10 +96,7 @@ def bzr_push(repo_path, repo_name):
         subprocess.check_call(git_command, shell=True)
     except Exception, e:
         print 'push failed for', repo_name 
-        print '%s' % (e.message)   
-
-def upload_git_repo():
-    pass
+        print '%s' % (e.message)
 
 def upload_bzr_repos():
     all_bzr_locations = subprocess.check_output(BZR_LOCATE, shell=True)
@@ -139,16 +136,17 @@ def upload_svn_repos():
             bb_repo_name = (lab_name + "-" + repo_name).lower()
             repo_path = location + "/" + repo_name
             bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
+            git_repo_path = GIT_SVN_REPO_LOCATION + repo_name
             if repo_exists(bb_repo_url):
-                print "Pushing to repo", bb_repo_name
+                print "Repo already exists; pushing to repo", bb_repo_name
                 sync_svn_git(bb_repo_name)
-                git_push(repo_path, bb_repo_name)
+                git_push(git_repo_path, bb_repo_name)
             else:
                 print "Creating repo", bb_repo_name
-                create_repo(bb_repo_name)
                 create_git_from_svn(repo_path, bb_repo_name)
+                create_repo(bb_repo_name)
                 print "Pushing to repo", bb_repo_name
-                git_push(repo_path, bb_repo_name)
+                git_push(git_repo_path, bb_repo_name)
     print "Finished uploading svn repositories"
 
 def sync_svn_git(repo_name):

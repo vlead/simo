@@ -42,10 +42,8 @@ def upload_git_repos():
     5. change pwd back to PATH
     6. Repeat 2-6 for each repo
     """
-    #print GIT_LOCATE
     all_git_locations = subprocess.check_output(GIT_LOCATE, shell=True)
     for location in all_git_locations.split('\n'):
-        print location
         # get all the git repo names 
         m = re.match("/labs/(%s)/" % LAB_ID_REGEX, location)
         if m == None:
@@ -53,32 +51,27 @@ def upload_git_repos():
         lab_name = m.group(1)
         for repo_name in os.listdir(location):
             # form the bitbucket repo url
+            SIMO_LOGGER.debug("Now working on Git repo %s" % repo_name)
             bb_repo_name = (lab_name + "-" + repo_name).lower()
             repo_path = location + "/" + repo_name
             bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
             if bb_repo_exists(bb_repo_url):
-                print "Pushing to repo", bb_repo_name
                 git_push(repo_path, bb_repo_name)
             else:
-                print "Creating repo", bb_repo_name
-                create_bb_repo(bb_repo_name)
-                print "Pushing to repo", bb_repo_name
-                git_push(repo_path, bb_repo_name)
-    print "Finished uploading git repositories"
+                SIMO_LOGGER.debug("Creating Bitbucket repo %s" % bb_repo_name)
+                if create_bb_repo(bb_repo_name):
+                    git_push(repo_path, bb_repo_name)
+    SIMO_LOGGER.info(
+        "Finished uploading git repositories. See the log file for any errors")
 
 def git_push(repo_path, repo_name):
     repo_url = '%s%s' % (BB_PUSH_URL,repo_name)
-    git_command = "git --git-dir=%s push %s master" % \
-                                            (repo_path, repo_url)
+    git_command = "git --git-dir=%s push %s master" % (repo_path, repo_url)
     try:
         subprocess.check_call(git_command, shell=True)
     except Exception, e:
         SIMO_LOGGER.error('push failed for', repo_name)
         SIMO_LOGGER.error(e.message)
-    try:
-        pass
-    except Exception, e:
-        raise e
 
 def bb_repo_exists(repo_url):
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
@@ -92,8 +85,12 @@ def create_bb_repo(repo_name):
     payload = { "scm": "git", "is_private": "true"}
     headers = {'content-type': 'application/json'}
     response = requests.post(url=url, data=payload, auth=auth)
-    SIMO_LOGGER.debug("Received status code %s on creating Bitbucket repo %s",
-                                    response.status_code, repo_name)
+    if response.status_code != requests.codes.ok:
+        SIMO_LOGGER.error(
+            "Received status code %s on creating Bitbucket repo %s",
+            response.status_code, repo_name)
+        return False
+    return True
 
 def bzr_push(repo_path, repo_name):
     repo_url = '%s%s' % (BB_PUSH_URL2, repo_name)
@@ -108,55 +105,52 @@ def bzr_push(repo_path, repo_name):
 def upload_bzr_repos():
     all_bzr_locations = subprocess.check_output(BZR_LOCATE, shell=True)
     for location in all_bzr_locations.split('\n'):
-        print location
         # get all the bazaar repo names 
         m = re.match(r'/labs/(\w+\d*)/bzr/([\w\d\-_]+)/', location)
         if m == None:
             continue
         lab_name = m.group(1)
         repo_name = m.group(2)
+        SIMO_LOGGER.debug("Now working on Bazaar repo %s" % repo_name)
         # form the bitbucket repo url
         bb_repo_name = (lab_name + "-" + repo_name).lower()
         repo_path = location #+ "/" + repo_name
         bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
         if bb_repo_exists(bb_repo_url):
-            print "Pushing to repo", bb_repo_name
             bzr_push(repo_path, bb_repo_name)
         else:
-            print "Creating repo", bb_repo_name
-            create_bb_repo(bb_repo_name)
-            print "Pushing to repo", bb_repo_name
-            bzr_push(repo_path, bb_repo_name)
-    SIMO_LOGGER.debug("Finished uploading bzr repositories")
-
+            SIMO_LOGGER.debug("Creating Bitbucket repo %s" % bb_repo_name)
+            if create_bb_repo(bb_repo_name):
+                bzr_push(repo_path, bb_repo_name)
+    SIMO_LOGGER.info(
+        "Finished uploading Bazaar repositories. See the log file for any errors")
 
 def upload_svn_repos():
     all_svn_locations = subprocess.check_output(SVN_LOCATE, shell=True)
     for location in all_svn_locations.split('\n'):
-        print location #/labs/eerc05/svn
         m = re.match("/labs/(%s)/svn" % LAB_ID_REGEX, location)
         if m == None:
             continue
         lab_name = m.group(1)
         for repo_name in filter(os.path.isdir, os.listdir(location)):
-            # form the bitbucket repo url
+            SIMO_LOGGER.debug("Now working on Subversion repo %s" % repo_name)
             bb_repo_name = (lab_name + "-" + repo_name).lower()
             repo_path = location + "/" + repo_name
             bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
             git_repo_path = os.getcwd() + "/" + GIT_SVN_REPO_LOCATION + \
                             bb_repo_name + "/.git"
             if os.path.exists(git_repo_path):
-                print "Repo already exists; syncing git-svn repo", bb_repo_name
                 sync_svn_git(bb_repo_name)
+                git_push(git_repo_path, bb_repo_name)
             else:
-                print "Creating local git-svn repo"
+                SIMO_LOGGER.debug("Creating local git repo for this svn repo")
                 create_git_from_svn(repo_path, bb_repo_name)
             if not bb_repo_exists(bb_repo_url):
-                print "Creating Bitbucket repo", bb_repo_name
-                create_bb_repo(bb_repo_name)
-            print "Pushing to repo", bb_repo_name
-            git_push(git_repo_path, bb_repo_name)
-    print "Finished uploading svn repositories"
+                SIMO_LOGGER.debug("Creating Bitbucket repo %s" % bb_repo_name)
+                if create_bb_repo(bb_repo_name):
+                    git_push(git_repo_path, bb_repo_name)
+    SIMO_LOGGER.info(
+        "Finished uploading Subversion repositories. See the log file for any errors")
 
 def sync_svn_git(repo_name):
     git_work_tree = GIT_SVN_REPO_LOCATION + repo_name
@@ -198,6 +192,8 @@ def setup_logging():
 
 if __name__ == '__main__':
     setup_logging()
+    SIMO_LOGGER.info("Started SIMO")
     upload_git_repos()
     upload_bzr_repos()
     upload_svn_repos()
+    SIMO_LOGGER.info("Finished SIMO")

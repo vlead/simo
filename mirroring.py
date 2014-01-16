@@ -4,6 +4,8 @@ import re
 import subprocess
 import sys
 import json
+import logging
+from logging.handlers import TimedRotatingFileHandler
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -19,6 +21,8 @@ BZR_LOCATE = r"find %s -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" 
 SVN_LOCATE = r"find %s -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "svn")
 LAB_ID_REGEX = r"\w+\d*"
 GIT_SVN_REPO_LOCATION = "./git-svn-dir/"
+
+SIMO_LOGGER = logging.getLogger('simo')
 
 def upload_git_repos():
     """Upload all git repos at PATH
@@ -69,8 +73,12 @@ def git_push(repo_path, repo_name):
     try:
         subprocess.check_call(git_command, shell=True)
     except Exception, e:
-        print 'push failed for', repo_name
-        print '%s' % (e.message)
+        SIMO_LOGGER.error('push failed for', repo_name)
+        SIMO_LOGGER.error(e.message)
+    try:
+        pass
+    except Exception, e:
+        raise e
 
 def bb_repo_exists(repo_url):
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
@@ -78,15 +86,14 @@ def bb_repo_exists(repo_url):
     return response.status_code == requests.codes.ok
 
 def create_bb_repo(repo_name):
-    print BB_USERNAME, BB_PASSWORD
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
-    # the request URL format is https://api.bitbucket.org/2.0/repositories/BB_USERNAME/repo_name
+    # https://api.bitbucket.org/2.0/repositories/BB_USERNAME/repo_name
     url = '%s%s/%s' % (REPO_API_URL, BB_USERNAME, repo_name)
-    print url
     payload = { "scm": "git", "is_private": "true"}
     headers = {'content-type': 'application/json'}
     response = requests.post(url=url, data=payload, auth=auth)
-    print repo_name, response.status_code
+    SIMO_LOGGER.debug("Received status code %s on creating Bitbucket repo %s",
+                                    response.status_code, repo_name)
 
 def bzr_push(repo_path, repo_name):
     repo_url = '%s%s' % (BB_PUSH_URL2, repo_name)
@@ -95,8 +102,8 @@ def bzr_push(repo_path, repo_name):
     try:
         subprocess.check_call(git_command, shell=True)
     except Exception, e:
-        print 'push failed for', repo_name 
-        print '%s' % (e.message)
+        SIMO_LOGGER.error('push failed for', repo_name)
+        SIMO_LOGGER.error(e.message)
 
 def upload_bzr_repos():
     all_bzr_locations = subprocess.check_output(BZR_LOCATE, shell=True)
@@ -120,7 +127,7 @@ def upload_bzr_repos():
             create_bb_repo(bb_repo_name)
             print "Pushing to repo", bb_repo_name
             bzr_push(repo_path, bb_repo_name)
-    print "Finished uploading bzr repositories"
+    SIMO_LOGGER.debug("Finished uploading bzr repositories")
 
 
 def upload_svn_repos():
@@ -159,21 +166,38 @@ def sync_svn_git(repo_name):
         subprocess.check_call("git svn fetch", shell=True)
         subprocess.check_call("git svn rebase", shell=True)
     except Exception, e:
-        print 'svn sync failed for', repo_name
-        print '%s' % (e.message)
+        SIMO_LOGGER.error('svn sync failed for', repo_name)
+        SIMO_LOGGER.error(e.message)
     finally:
         os.chdir(orig_dir)
 
 def create_git_from_svn(repo_path, bb_repo_name):
     """Creates a local git repo from svn"""
-    GIT_SVN_CLONE = "git svn clone file://%s %s" % (repo_path, GIT_SVN_REPO_LOCATION + bb_repo_name)
+    GIT_SVN_CLONE = "git svn clone file://%s %s" % (repo_path, 
+                                        GIT_SVN_REPO_LOCATION + bb_repo_name)
     try:
         subprocess.check_call(GIT_SVN_CLONE, shell=True)
     except Exception, e:
-        print 'git svn clone failed for', bb_repo_name
-        print '%s' % (e.message)
+        SIMO_LOGGER.error('git svn clone failed for', bb_repo_name)
+        SIMO_LOGGER.error(e.message)
+
+def setup_logging():
+    LOG_FILENAME = 'log/simo.log'       # make log name a setting
+    
+    SIMO_LOGGER.setLevel(logging.DEBUG)   # make log level a setting
+
+    # Add the log message handler to the logger
+    handler = logging.handlers.TimedRotatingFileHandler(
+                                LOG_FILENAME, when='midnight', backupCount=5)
+
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %I:%M:%S %p')
+    handler.setFormatter(formatter)
+    SIMO_LOGGER.addHandler(handler)
 
 if __name__ == '__main__':
-    #upload_git_repos()
-    #upload_bzr_repos()
+    setup_logging()
+    upload_git_repos()
+    upload_bzr_repos()
     upload_svn_repos()

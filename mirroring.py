@@ -192,8 +192,8 @@ def setup_logging():
 
 if __name__ == '__main__':
     setup_logging()
-    SIMO_LOGGER.info("Started SIMO")
+    SIMO_LOGGER.info("*****Started SIMO*****")
     upload_git_repos()
     upload_bzr_repos()
     upload_svn_repos()
-    SIMO_LOGGER.info("Finished SIMO")
+    SIMO_LOGGER.info("*****Finished SIMO*****")

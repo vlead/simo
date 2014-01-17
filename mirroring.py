@@ -147,8 +147,7 @@ def upload_svn_repos():
             bb_repo_url = "%s%s.git" % (BB_URL, bb_repo_name)
             git_repo_path = os.getcwd() + "/" + GIT_SVN_REPO_LOCATION + \
                             bb_repo_name + "/.git"
-            if os.path.exists(git_repo_path):
-                sync_svn_git(bb_repo_name)
+            if os.path.exists(git_repo_path) and sync_svn_git(bb_repo_name):
                 git_push(git_repo_path, bb_repo_name)
             else:
                 SIMO_LOGGER.debug("Creating local git repo for this svn repo")
@@ -169,12 +168,13 @@ def sync_svn_git(repo_name):
         subprocess.check_call("git svn rebase", shell=True,
                                 stdout=LOG_FD,  stderr=LOG_FD)
         os.chdir(orig_dir)
+        return True
     except Exception, e:
         SIMO_LOGGER.error('svn sync failed for %s' % repo_name)
         if e.message.strip():
             SIMO_LOGGER.error(e.message)
-    finally:
         os.chdir(orig_dir)
+        return False
 
 def create_git_from_svn(repo_path, bb_repo_name):
     """Creates a local git repo from svn"""

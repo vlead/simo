@@ -7,7 +7,7 @@ from mail_settings import *
 GMAILSMTP = 'smtp.gmail.com:587'
 
 def sendemail(subject, message, smtpserver=GMAILSMTP):
-    to_addr_list = ['a@vlabs.ac.in', 'chandan@vlabs.ac.in', 'dp@vlabs.ac.in']
+    to_addr_list = ['engg@vlabs.ac.in']
     header  = 'From: %s\n' % FROM_ADDR
     header += 'To: %s\n' % ','.join(to_addr_list)
     header += 'Subject: %s\n\n' % subject

@@ -158,6 +158,8 @@ def upload_svn_repos():
             if not os.path.exists(git_repo_path) and not \
                     create_git_from_svn(repo_path, bb_repo_name):
                 continue
+            if not sync_svn_git(bb_repo_name):
+                continue
             if bb_repo_exists(bb_repo_url):
                 git_push(git_repo_path, bb_repo_name)
             elif create_bb_repo(bb_repo_name):
@@ -222,8 +224,8 @@ def parse_log_file():
     elapsed_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %I:%M:%S %p") - \
                     datetime.datetime.strptime(start_time, "%Y-%m-%d %I:%M:%S %p")
     message_list = [line for line in log if 'simo - ERROR' in line]
-    message = reduce(lambda x, y: x+y, message_list)
-    return (start_time, end_time, str(elapsed_time), len(message_list), message)
+    message = reduce(lambda x, y: x+y, message_list) if bool(message_list) else ""
+    return (start_time, end_time, str(elapsed_time), len(message_list), message, LOG_FILENAME)
 
 
 if __name__ == '__main__':

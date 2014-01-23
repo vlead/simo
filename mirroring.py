@@ -77,9 +77,7 @@ def git_push(repo_path, repo_name):
         subprocess.check_call(git_command, shell=True, stdout=LOG_FD,  
                             stderr=LOG_FD)
     except Exception, e:
-        SIMO_LOGGER.error('push failed for %s' % repo_name)
-        if e.message.strip():
-            SIMO_LOGGER.error(e.message)
+        SIMO_LOGGER.error('push failed for %s ' % repo_name + str(e))
 
 def bb_repo_exists(repo_url):
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
@@ -96,7 +94,7 @@ def create_bb_repo(repo_name):
     response = requests.post(url=url, data=payload, auth=auth)
     if response.status_code != requests.codes.ok:
         SIMO_LOGGER.error(
-            "Received status code '%s' on creating Bitbucket repo '%s'" %
+            "Received status code '%s' on creating Bitbucket repo '%s' " %
             (response.status_code, repo_name))
         return False
     return True
@@ -110,9 +108,7 @@ def bzr_push(repo_path, repo_name):
         subprocess.check_call(bzr_command, shell=True, stdout=LOG_FD,  
                             stderr=LOG_FD)
     except Exception, e:
-        SIMO_LOGGER.error('push failed for %s' % repo_name)
-        if e.message.strip():
-            SIMO_LOGGER.error(e.message)
+        SIMO_LOGGER.error('push failed for %s ' % repo_name + str(e))
 
 def upload_bzr_repos():
     SIMO_LOGGER.debug(BZR_LOCATE)
@@ -181,9 +177,7 @@ def sync_svn_git(repo_name):
         os.chdir(orig_dir)
         return True
     except Exception, e:
-        SIMO_LOGGER.error('svn sync failed for %s' % repo_name)
-        if e.message.strip():
-            SIMO_LOGGER.error(e.message)
+        SIMO_LOGGER.error('svn sync failed for %s ' % repo_name + str(e))
         os.chdir(orig_dir)
         return False
 
@@ -197,9 +191,7 @@ def create_git_from_svn(repo_path, bb_repo_name):
                                 stderr=LOG_FD)
         return True
     except Exception, e:
-        SIMO_LOGGER.error('git svn clone failed for %s' % bb_repo_name)
-        if e.message.strip():
-            SIMO_LOGGER.error(e.message)
+        SIMO_LOGGER.error('git svn clone failed for %s ' % bb_repo_name + str(e))
         return False
 
 def setup_logging():
@@ -219,13 +211,21 @@ def send_email():
 
 def parse_log_file():
     log = open(LOG_FILENAME).readlines()
-    start_time = log[0].split(' - ')[0]
+    log_start = 0
+    for i, line in enumerate(log):
+        if "Started SIMO" in line:      # Only the last SIMO run now considered
+            log_start = i
+    start_time = log[log_start].split(' - ')[0]
     end_time = log[-1].split(' - ')[0]
     elapsed_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %I:%M:%S %p") - \
                     datetime.datetime.strptime(start_time, "%Y-%m-%d %I:%M:%S %p")
-    message_list = [line for line in log if 'simo - ERROR' in line]
+    message_list = [line for line in log[log_start:] if 'simo - ERROR' in line]
     message = reduce(lambda x, y: x+y, message_list) if bool(message_list) else ""
     return (start_time, end_time, str(elapsed_time), len(message_list), message, LOG_FILENAME)
+
+def test():
+    # write test cases here
+    assert True
 
 
 if __name__ == '__main__':

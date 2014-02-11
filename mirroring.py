@@ -80,6 +80,7 @@ def git_push(repo_path, repo_name):
         SIMO_LOGGER.error('push failed for %s ' % repo_name + str(e))
 
 def bb_repo_exists(repo_url):
+    SIMO_LOGGER.debug("Looking up Bitbucket for repo " + repo_url)
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
     response = requests.get(url=repo_url, auth=auth)
     return response.status_code == requests.codes.ok
@@ -183,11 +184,11 @@ def sync_svn_git(repo_name):
 
 def create_git_from_svn(repo_path, bb_repo_name):
     """Creates a local git repo from svn"""
-    GIT_SVN_CLONE = "git svn clone file://%s %s" % (repo_path, 
+    git_svn_clone = "git svn clone file://%s %s" % (repo_path,
                                         GIT_SVN_REPO_LOCATION + bb_repo_name)
-    SIMO_LOGGER.debug(GIT_SVN_CLONE)
+    SIMO_LOGGER.debug(git_svn_clone)
     try:
-        subprocess.check_call(GIT_SVN_CLONE, shell=True, stdout=LOG_FD,  
+        subprocess.check_call(git_svn_clone, shell=True, stdout=LOG_FD,
                                 stderr=LOG_FD)
         return True
     except Exception, e:
@@ -197,31 +198,34 @@ def create_git_from_svn(repo_path, bb_repo_name):
 def setup_logging():
     SIMO_LOGGER.setLevel(logging.DEBUG)   # make log level a setting
     # Add the log message handler to the logger
-    handler = logging.handlers.TimedRotatingFileHandler(
+    simo_handler = logging.handlers.TimedRotatingFileHandler(
                                 LOG_FILENAME, when='midnight', backupCount=5)
 
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %I:%M:%S %p')
-    handler.setFormatter(formatter)
-    SIMO_LOGGER.addHandler(handler)
+    simo_handler.setFormatter(formatter)
+    SIMO_LOGGER.addHandler(simo_handler)
 
 def send_email():
     mailer(*parse_log_file())
 
 def parse_log_file():
-    log = open(LOG_FILENAME).readlines()
-    log_start = 0
-    for i, line in enumerate(log):
-        if "Started SIMO" in line:      # Only the last SIMO run now considered
-            log_start = i
-    start_time = log[log_start].split(' - ')[0]
-    end_time = log[-1].split(' - ')[0]
-    elapsed_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %I:%M:%S %p") - \
-                    datetime.datetime.strptime(start_time, "%Y-%m-%d %I:%M:%S %p")
-    message_list = [line for line in log[log_start:] if 'simo - ERROR' in line]
-    message = reduce(lambda x, y: x+y, message_list) if bool(message_list) else ""
-    return (start_time, end_time, str(elapsed_time), len(message_list), message, LOG_FILENAME)
+    try:
+        log = open(LOG_FILENAME).readlines()
+        log_start = 0
+        for i, line in enumerate(log):
+            if "Started SIMO" in line:      # Only the last SIMO run now considered
+                log_start = i
+        start_time = log[log_start].split(' - ')[0]
+        end_time = log[-1].split(' - ')[0]
+        elapsed_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %I:%M:%S %p") - \
+                        datetime.datetime.strptime(start_time, "%Y-%m-%d %I:%M:%S %p")
+        message_list = [line for line in log[log_start:] if 'simo - ERROR' in line]
+        message = reduce(lambda x, y: x+y, message_list) if bool(message_list) else ""
+        return (start_time, end_time, str(elapsed_time), len(message_list), message, LOG_FILENAME)
+    except Exception, e:
+        return (None, None, None, 0, "Error encountered", LOG_FILENAME)
 
 def test():
     # write test cases here
@@ -229,16 +233,22 @@ def test():
 
 
 if __name__ == '__main__':
-    LOG_FD = open(LOG_FILENAME, 'a')
-    if LOG_FD == None:
-        SIMO_LOGGER.error("Unable to open log file for subprocess.")
-        SIMO_LOGGER.error("Subprocess will not be able to log stdout and " + \
-                            "stderr messages.")
-    setup_logging()
-    SIMO_LOGGER.info("Started SIMO")
-    upload_git_repos()
-    upload_bzr_repos()
-    upload_svn_repos()
-    SIMO_LOGGER.info("Finished SIMO")
-    LOG_FD.close()
+    try:
+        setup_logging()
+        LOG_FD = open(LOG_FILENAME, 'a')
+        if LOG_FD == None:
+            SIMO_LOGGER.error("Unable to open log file for subprocess.")
+            SIMO_LOGGER.error("Subprocess will not be able to log stdout and " + \
+                                "stderr messages.")
+        SIMO_LOGGER.info("Started SIMO")
+        try:
+            upload_git_repos()
+            upload_bzr_repos()
+            upload_svn_repos()
+        except Exception, e:
+            SIMO_LOGGER.error("Error encountered: " + str(e))
+        SIMO_LOGGER.info("Finished SIMO")
+        LOG_FD.close()
+    except Exception, e:
+        SIMO_LOGGER.error("Error encountered: " + str(e))
     send_email()

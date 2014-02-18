@@ -38,6 +38,7 @@ nosetests.xml
 # Settings files
 bb_settings.py
 mail_settings.py
+simo_pull_settings.py
 
 # OS X system files
 DS_Store

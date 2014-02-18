@@ -33,7 +33,7 @@ def get_bb_repo_info():
     return bb_repo_info
 
 
-def sync_solutions(repo_name):
+def pull_repos(repo_name):
     def repo_exists(repo_name):
         return os.path.isdir(REPOS_DIR + repo_name)
 
@@ -74,7 +74,7 @@ def setup_logging():
 def main():
     for repo_name, repo_url in get_bb_repo_info():
         SIMO_LOGGER.debug(repo_name)
-        sync_solutions(repo_name)
+        pull_repos(repo_name)
 
 
 if __name__ == '__main__':

@@ -15,9 +15,12 @@ from bb_settings import *
 from mailman import mailer
 
 PATH = "/labs/"
-BB_URL = "https://bitbucket.org/virtuallabs/"
-BB_PUSH_URL = "ssh://git@altssh.bitbucket.org:443/virtuallabs/"
-BB_PUSH_URL2 = "git+ssh://git@altssh.bitbucket.org:443/virtuallabs/"
+# BB_URL = "https://bitbucket.org/virtuallabs/"
+# BB_PUSH_URL = "ssh://git@altssh.bitbucket.org:443/virtuallabs/"
+# BB_PUSH_URL2 = "git+ssh://git@altssh.bitbucket.org:443/virtuallabs/"
+BB_URL = "https://bitbucket.org/%s/" % BB_TEAM_NAME
+BB_PUSH_URL = "ssh://git@altssh.bitbucket.org:443/%s/" BB_TEAM_NAME
+BB_PUSH_URL2 = "git+ssh://git@altssh.bitbucket.org:443/%s/" BB_TEAM_NAME
 GIT_LOCATE = r"find %s -maxdepth 3 -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "git")
 BZR_LOCATE = r"find %s -maxdepth 5 -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "trunk")
 SVN_LOCATE = r"find %s -maxdepth 3 -name %s -exec du -sh {} \; | grep -v '^4.0K' | cut -f2" % (PATH, "svn")
@@ -89,7 +92,7 @@ def create_bb_repo(repo_name):
     SIMO_LOGGER.debug("Creating Bitbucket repo '%s'" % repo_name)
     auth = HTTPBasicAuth(BB_USERNAME, BB_PASSWORD)
     # https://api.bitbucket.org/2.0/repositories/BB_USERNAME/repo_name
-    url = '%s%s/%s' % (REPO_API_URL, BB_USERNAME, repo_name)
+    url = '%s%s/%s' % (REPO_API_URL, BB_TEAM_NAME, repo_name)
     payload = { "scm": "git", "is_private": "true"}
     headers = {'content-type': 'application/json'}
     response = requests.post(url=url, data=payload, auth=auth)
